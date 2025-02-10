@@ -11,7 +11,8 @@
 #define ANSI_COLOR_MAGENTA "\x1b[35m"
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
-
+#define Couleur_J1 "\e[45m"
+#define Couleur_J2 "\e[42m"
 
 
 GameState state = {.map = NULL, .size = 0};
@@ -64,7 +65,7 @@ void fill_map(GameState* map){
 
 }
 int GR911_letterToNum(char Cellule){	
-			if ("R" == Cellule){
+			if ('R' == Cellule){
 				return 3;
 			}
 			if ('G' == Cellule){
@@ -94,10 +95,10 @@ void GR911_affichage(GameState* state){
 		for ( int j = 0; j < size; j++){
 			int Cellule=state->map[i * size + j];
 			if (1 == Cellule){
-				printf("%s ", "v");
+				printf("%s ", Couleur_J1"v"ANSI_COLOR_RESET);
 			}
 			if (2 == Cellule){
-				printf("%s ", "^");
+				printf("%s ", Couleur_J2"^"ANSI_COLOR_RESET);
 			}
 			if (3 == Cellule){
 				printf("%s ",ANSI_COLOR_RED "R" ANSI_COLOR_RESET);
@@ -144,8 +145,8 @@ int GR911_adjacent(GameState* state,int x , int y , int player){
     return 0;
 }
 
-void GR911_updateWorld(GameState* state,char Played,int Player ){
-	int PlayedNum = GR911_letterToNum(&Played);
+void GR911_updateWorld(GameState* state,char Playeed,int Player ){
+	int PlayedNum = GR911_letterToNum(Playeed);
 
 	int size = state->size;
 	int ch = 1;
@@ -156,7 +157,7 @@ void GR911_updateWorld(GameState* state,char Played,int Player ){
 		for ( int j = 0; j < size; j++){
 
 			if(state->map[i * size+j] ==PlayedNum){
-				if(GR911_adjacent(&state , i, j,Player)){
+				if(GR911_adjacent(state , i, j,Player)){
 					state->map[i * size+j] = Player;
 					ch = 1;
 
@@ -168,36 +169,28 @@ void GR911_updateWorld(GameState* state,char Played,int Player ){
 		
 		}
 	}
-	
-	
 
 }
-
-void GR911_finDuJeu(GameState* state){
-	int sc1 = 0;
-	int sc2 = 0;
+int GR911_finDuJeu(GameState* state,int Player){
+	int sc = 0;
+	
 	int size = state->size;
 	for (int i = 0;i < size; i++){
 		for ( int j = 0; j < size; j++){
 
 
 			if(state->map[i * size+j] ==1){
-				sc1 = sc1 + 1;
-			}
-			if(state->map[i * size+j] ==2){
-				sc2 = sc2 + 1;
-			}
+				sc = sc + 1;
+			
 		}
 		
 	}
 
-	if(sc1 > (size*size/2)){
-		return (1, 1);
+	if(sc > (size*size/2)){
+		return 1;
 	}
-	if(sc2 > (size*size/2)){
-		return (1, 2);
 	}
-	return (0,0);
+	return 0;
 }
 
 
@@ -228,10 +221,7 @@ int main(int argc, char** argv){
     } else {
         printf("Erreur lors de l'initialisation du terrain.\n");
     }
-	while (1)
-	{
-		
-	}
+
 	
 
 
