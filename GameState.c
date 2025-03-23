@@ -1,4 +1,4 @@
-#include "../head/GameState.h"
+#include "head/GameState.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -37,12 +37,10 @@ void create_empty_game_state(GameState* state, int size) {
     }
 }
 
-void set_map_value (GameState* state, int x, int y, Color value){
-	int size = state->size;
-	state->map[x * size + y] = value;
+void set_map_value (GameState* state, int x, int y, Color value) {
+    int size = state->size;
+    state->map[x * size + y] = value;
 }
-
-
 
 Color get_map_value (GameState* state, int x, int y){
 	if (state -> map == NULL || x > state -> size || y > state -> size || x < 0 || y < 0)
@@ -52,83 +50,76 @@ Color get_map_value (GameState* state, int x, int y){
 	}
 	return state -> map[y * state -> size + x];
 }
-void fill_map(GameState* map){
-	int size = map->size;
-	for (int i = 0; i < size; i++){
-		for (int j = 0; j < size; j++){
-			int couleur= rand()%7 + 3;
-			map->map[i * size+j] =couleur;
-		}
-	}
-	map->map[0 * size+(size-1)] = PLAYER_1;
-	map->map[(size-1) * size+0] = PLAYER_2;
+void fill_map(GameState* map) {
+    int size = map->size;
+    for (int i = 0; i < size; i++){
+        for (int j = 0; j < size; j++){
+            int couleur = rand() % 7 + 3;
+            map->map[i * size + j] = couleur;
+        }
+    }
+    map->map[0 * size + (size - 1)] = PLAYER_1;
+    map->map[(size - 1) * size + 0] = PLAYER_2;
+}
 
+int GR911_letterToNum(char Cellule) {
+    // couleurs en numéro pour simplifier le traitement
+    switch (Cellule) {
+        case 'R': return 3;
+        case 'G': return 4;
+        case 'B': return 5;
+        case 'Y': return 6;
+        case 'M': return 7;
+        case 'C': return 8;
+        case 'W': return 9;
+        default:  return ERROR; // Lettre inconnue
+    }
 }
-int GR911_letterToNum(char Cellule){	
-			if ('R' == Cellule){
-				return 3;
-			}
-			if ('G' == Cellule){
-				return 4;
-			}
-			if ('B' == Cellule){
-				return 5;
-			}
-			if ('Y' == Cellule){
-				return 6;
-			}
-			if ('M' == Cellule){
-				return 7;
-			}
-			if ('C' == Cellule){
-				return 8;
-			}
-			if ('W' == Cellule){
-				return 9;
-			}
-		
-	
+
+void GR911_affichage(GameState* state) {
+    int size = state->size;
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++){
+            int Cellule = state->map[i * size + j];
+            if (Cellule == PLAYER_1) {
+                printf("%s ", Couleur_J1 "v" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == PLAYER_2) {
+                printf("%s ", Couleur_J2 "^" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == 3) {
+                printf("%s ", ANSI_COLOR_RED "R" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == 4) {
+                printf("%s ", ANSI_COLOR_GREEN "G" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == 5) {
+                printf("%s ", ANSI_COLOR_BLUE "B" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == 6) {
+                printf("%s ", ANSI_COLOR_YELLOW "Y" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == 7) {
+                printf("%s ", ANSI_COLOR_MAGENTA "M" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == 8) {
+                printf("%s ", ANSI_COLOR_CYAN "C" ANSI_COLOR_RESET);
+            }
+            else if (Cellule == 9) {
+                printf("%s ", "W");
+            }
+            else {
+                printf("? ");
+            }
+        }
+        printf("\n");
+    }
 }
-void GR911_affichage(GameState* state){
-	int size = state->size;
-	for (int i = 0;i < size; i++){
-		for ( int j = 0; j < size; j++){
-			int Cellule=state->map[i * size + j];
-			if (1 == Cellule){
-				printf("%s ", Couleur_J1"v"ANSI_COLOR_RESET);
-			}
-			if (2 == Cellule){
-				printf("%s ", Couleur_J2"^"ANSI_COLOR_RESET);
-			}
-			if (3 == Cellule){
-				printf("%s ",ANSI_COLOR_RED "R" ANSI_COLOR_RESET);
-			}
-			if (4 == Cellule){
-				printf("%s ",ANSI_COLOR_GREEN "G" ANSI_COLOR_RESET);
-			}
-			if (5 == Cellule){
-				printf("%s ",ANSI_COLOR_BLUE "B" ANSI_COLOR_RESET);
-			}
-			if (6 == Cellule){
-				printf("%s ",ANSI_COLOR_YELLOW "Y" ANSI_COLOR_RESET);
-			}
-			if (7 == Cellule){
-				printf("%s ",ANSI_COLOR_MAGENTA "M" ANSI_COLOR_RESET);
-			}
-			if (8 == Cellule){
-				printf("%s ",ANSI_COLOR_CYAN "C" ANSI_COLOR_RESET);
-			}
-			if (9 == Cellule){
-				printf("%s ","W");
-			}
-		}
-		printf("\n");
-	}
-}
+
 int GR911_adjacent(GameState* state,int x , int y , int player){
-	int size = state->size;
-	 int dx[] = {-1, 1, 0, 0}; 
-    int dy[] = {0, 0, -1, 1}; 
+    int size = state->size;
+     int dx[] = {-1, 1, 0, 0};
+    int dy[] = {0, 0, -1, 1};
 
     for (int i = 0; i < 4; i++) {
         int nx = x + dx[i];
@@ -141,90 +132,100 @@ int GR911_adjacent(GameState* state,int x , int y , int player){
         }
     }
 
-    // Aucune case adjacente n'appartient au joueur
+	// Aucune case adjacente n'appartient au joueur
     return 0;
 }
 
-void GR911_updateWorld(GameState* state,char Playeed,int Player ){
-	int PlayedNum = GR911_letterToNum(Playeed);
-
-	int size = state->size;
-	int ch = 1;
-	while (ch ==1)
-	{ 	
-		ch = 0;
-		for (int i = 0;i < size; i++){
-		for ( int j = 0; j < size; j++){
-
-			if(state->map[i * size+j] ==PlayedNum){
-				if(GR911_adjacent(state , i, j,Player)){
-					state->map[i * size+j] = Player;
-					ch = 1;
-
-				}
-				
-			}
-
-		}
-		
-		}
-	}
-
-}
-int GR911_finDuJeu(GameState* state,int Player){
-	int sc = 0;
-	
-	int size = state->size;
-	for (int i = 0;i < size; i++){
-		for ( int j = 0; j < size; j++){
-
-
-			if(state->map[i * size+j] ==1){
-				sc = sc + 1;
-			
-		}
-		
-	}
-
-	if(sc > (size*size/2)){
-		return 1;
-	}
-	}
-	return 0;
-}
-
-
-int main(int argc, char** argv){
-	srand( time( NULL ) );
-	GameState state;
-    // Taille du terrain
-    int size = 30;
-    // Initialisation
-    create_empty_game_state(&state, size);
-    // Vérification si l'initialisation a réussi
-	fill_map(&state);
-    if (state.map != NULL) {
-        // Affichage du terrain
-       // for (int i = 0; i < size; i++) {
-       //     for (int j = 0; j < size; j++) {
-        //        printf("%c ", state.map[i * size + j]); // Affiche la valeur de chaque case
-        //    }
-        //    printf("\n");
-
-		GR911_affichage(&state);
-        
-	
-        // Libération de la mémoire
-        free(state.map);
-
-	
-    } else {
-        printf("Erreur lors de l'initialisation du terrain.\n");
+int GR911_updateWorld(GameState* state, char playedChar, int player) {
+    int playedNum = GR911_letterToNum(playedChar);
+    if (playedNum == ERROR) {
+        // Invalid letter
+        printf("Couleurs invalid! Rejoue \n");
+        return 0;
     }
 
-	
+    int size = state->size;
+    int changed = 1;
+    while (changed == 1) {
+        changed = 0;
+        for (int i = 0; i < size; i++){
+            for (int j = 0; j < size; j++){
+                if (state->map[i * size + j] == playedNum) {
+                    if (GR911_adjacent(state, i, j, player)) {
+                        state->map[i * size + j] = player;
+                        changed = 1;
+                    }
+                }
+            }
+        }
+    }
+	return 1;
+}
 
+int GR911_finDuJeu(GameState* state, int player) {
+    int sc = 0;
+    int size = state->size;
 
+    for (int i = 0; i < size; i++){
+        for (int j = 0; j < size; j++){
+            if (state->map[i * size + j] == player) {
+                sc++;
+            }
+        }
+    }
+    
+    if (sc > (size * size / 2)) {
+        return 1;
+    }
     return 0;
 }
 
+int main(int argc, char** argv) {
+    srand(time(NULL));
+
+    GameState state;
+    // Taille du terrain
+
+    int size = 10;
+	// Initialisation
+
+    create_empty_game_state(&state, size);
+	 // Vérification si l'initialisation a réussi
+    if (state.map == NULL) {
+        printf("Erreur lors de l'initialisation du terrain.\n");
+        return 1; 
+    }
+
+    fill_map(&state);
+    GR911_affichage(&state);
+
+    // Boucle principlae du jeu -----
+    int jeuFini = 0;
+    int player = 1;
+
+    while (jeuFini == 0) {
+        printf("Player %d's turn. Choose [R/G/B/Y/M/C/W]: ", player);
+
+        char playedChar;
+        scanf(" %c", &playedChar);
+
+        int valid = GR911_updateWorld(&state, playedChar, player);
+        GR911_affichage(&state);
+		if(valid==1){
+			jeuFini = GR911_finDuJeu(&state, player);
+        	if (jeuFini == 1) {
+            	printf("Player %d wins!\n", player);
+        	} 
+        	else {
+            	player = (player == 1) ? 2 : 1;
+        	}	
+
+		}
+        
+    }
+
+    free(state.map);
+    state.map = NULL;
+
+    return 0;
+}
