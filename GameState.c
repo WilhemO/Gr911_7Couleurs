@@ -210,6 +210,38 @@ int GR911_coupAleatoireValable(GameState* state,int player){
     }
     
 }
+int GR911_glouton(GameState* state,int player){
+    int itteration = 0;
+    int coup = 3;
+    int coupActuel = 3;
+    int size = state->size;
+    int puissanceMax = 0;
+    while (itteration < 10)
+    {
+        
+        int puissanceDuCoup = 0;
+        for (int i = 0; i < size; i++){
+            for (int j = 0; j < size; j++){
+                if (state->map[i * size + j] == coupActuel) {
+                    if (GR911_adjacent(&state , i , j ,player) == 1)
+                    {
+                        puissanceDuCoup++;
+                    }
+                    
+                }
+            }
+        }
+
+       if(puissanceDuCoup>puissanceMax){
+            puissanceMax = puissanceDuCoup;
+            coup = coupActuel;
+       }
+       coupActuel++;
+       itteration++;
+    }
+    return coup;
+    
+}
 
 int main(int argc, char** argv) {
     srand(time(NULL));
