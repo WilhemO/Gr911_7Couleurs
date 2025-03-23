@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 
-
+#define len=50
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -178,6 +178,37 @@ int GR911_finDuJeu(GameState* state, int player) {
         return 1;
     }
     return 0;
+}
+
+int GR911_coupAleatoire(GameState* state){
+    return rand() % 7 + 3;
+}
+int GR911_coupAleatoireValable(GameState* state,int player){
+    int coupValable = 0;
+    int coup;
+    int size = state->size;
+    while (coupValable == 0)
+    {
+        coup = rand()%7 + 3;
+        int puissanceDuCoup = 0;
+        for (int i = 0; i < size; i++){
+            for (int j = 0; j < size; j++){
+                if (state->map[i * size + j] == coup) {
+                    if (GR911_adjacent(&state , i , j ,player) == 1)
+                    {
+                        puissanceDuCoup++;
+                    }
+                    
+                }
+            }
+        }
+
+        if (puissanceDuCoup>0){
+            return coup;
+        }
+
+    }
+    
 }
 
 int main(int argc, char** argv) {
