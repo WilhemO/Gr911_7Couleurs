@@ -3,8 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define len=50
-#define ANSI_COLOR_RED     "\x1b[31m"
+    #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
 #define ANSI_COLOR_BLUE    "\x1b[34m"
@@ -72,6 +71,19 @@ int GR911_letterToNum(char Cellule) {
         case 'M': return 7;
         case 'C': return 8;
         case 'W': return 9;
+        default:  return ERROR; // Lettre inconnue
+    }
+}
+char GR911_NumToLetter(int Cellule) {
+    // couleurs en numéro pour simplifier le traitement
+    switch (Cellule) {
+        case 3: return 'R';
+        case 4: return 'G';
+        case 5: return 'B';
+        case 6: return 'Y';
+        case 7: return 'M';
+        case 8: return 'C';
+        case 9: return 'W';
         default:  return ERROR; // Lettre inconnue
     }
 }
@@ -194,7 +206,7 @@ int GR911_coupAleatoireValable(GameState* state,int player){
         for (int i = 0; i < size; i++){
             for (int j = 0; j < size; j++){
                 if (state->map[i * size + j] == coup) {
-                    if (GR911_adjacent(&state , i , j ,player) == 1)
+                    if (GR911_adjacent(state , i , j ,player) == 1)
                     {
                         puissanceDuCoup++;
                     }
@@ -204,6 +216,7 @@ int GR911_coupAleatoireValable(GameState* state,int player){
         }
 
         if (puissanceDuCoup>0){
+            printf("AI2 le dieu played %c \n", GR911_NumToLetter(coup));
             return coup;
         }
 
@@ -223,7 +236,7 @@ int GR911_glouton(GameState* state,int player){
         for (int i = 0; i < size; i++){
             for (int j = 0; j < size; j++){
                 if (state->map[i * size + j] == coupActuel) {
-                    if (GR911_adjacent(&state , i , j ,player) == 1)
+                    if (GR911_adjacent(state , i , j ,player) == 1)
                     {
                         puissanceDuCoup++;
                     }
@@ -239,10 +252,21 @@ int GR911_glouton(GameState* state,int player){
        coupActuel++;
        itteration++;
     }
+
+    printf("Glouton le dieu played %c \n", GR911_NumToLetter(coup));
     return coup;
     
 }
 
+
+int GR911_Human(GameState* state,int player){
+    printf("Player %d's turnn. Choose [R/G/B/Y/M/C/W]: ", player);
+
+    char playedChar;
+    scanf(" %c", &playedChar);
+
+        return playedChar;
+}
 int main(int argc, char** argv) {
     srand(time(NULL));
 
@@ -267,10 +291,9 @@ int main(int argc, char** argv) {
     int player = 1;
 
     while (jeuFini == 0) {
-        printf("Player %d's turn. Choose [R/G/B/Y/M/C/W]: ", player);
 
-        char playedChar;
-        scanf(" %c", &playedChar);
+
+        char playedChar = (player == 1)? GR911_Human(&state , player) :GR911_NumToLetter(GR911_glouton(&state, player));
 
         int valid = GR911_updateWorld(&state, playedChar, player);
         GR911_affichage(&state);
