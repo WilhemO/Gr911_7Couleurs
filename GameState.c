@@ -268,12 +268,14 @@ int GR911_Human(GameState* state,int player){
         return playedChar;
 }
 int main(int argc, char** argv) {
-    srand(time(NULL));
+    int windeglouton = 0;
+    for(int i=0;i<500;i++){
+        srand(time(NULL));
 
     GameState state;
     // Taille du terrain
 
-    int size = 10;
+    int size = 11;
 	// Initialisation
 
     create_empty_game_state(&state, size);
@@ -293,7 +295,7 @@ int main(int argc, char** argv) {
     while (jeuFini == 0) {
 
 
-        char playedChar = (player == 1)? GR911_Human(&state , player) :GR911_NumToLetter(GR911_glouton(&state, player));
+        char playedChar = (player == 1)? GR911_NumToLetter(GR911_coupAleatoireValable(&state , player)) :GR911_NumToLetter(GR911_glouton(&state, player));
 
         int valid = GR911_updateWorld(&state, playedChar, player);
         GR911_affichage(&state);
@@ -301,6 +303,9 @@ int main(int argc, char** argv) {
 			jeuFini = GR911_finDuJeu(&state, player);
         	if (jeuFini == 1) {
             	printf("Player %d wins!\n", player);
+                if(player == 2){
+                    windeglouton++;
+                }
         	} 
         	else {
             	player = (player == 1) ? 2 : 1;
@@ -312,6 +317,8 @@ int main(int argc, char** argv) {
 
     free(state.map);
     state.map = NULL;
+    }
+    printf("%d",windeglouton);
 
     return 0;
 }
