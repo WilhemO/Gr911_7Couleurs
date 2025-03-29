@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <SDL2/SDL.h>
+//#include <SDL2/SDL2_ttf.h>
+
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
+#define GRID_SIZE 50
 
     #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -87,8 +93,7 @@ char GR911_NumToLetter(int Cellule) {
         default:  return ERROR; // Lettre inconnue
     }
 }
-
-void GR911_affichage(GameState* state) {
+void GR911_affichage2(GameState* state) {
     int size = state->size;
     printf("-------------------\n");
     for (int i = 0; i < size; i++) {
@@ -128,6 +133,66 @@ void GR911_affichage(GameState* state) {
         printf("\n");
     }
 }
+void GR911_affichage(SDL_Renderer *renderer, GameState *state) {
+    int size = state->size;
+    int cell_size = 50; // Taille d'une cellule en pixels
+    SDL_Rect cell;
+
+    cell.w = cell_size; // Largeur de la cellule
+    cell.h = cell_size; // Hauteur de la cellule
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Fond noir
+SDL_RenderClear(renderer);
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            int Cellule = state->map[i * size + j];
+            // Position de la cellule dans la fenêtre
+            cell.x = j * cell_size+(WINDOW_WIDTH-size*cell_size)/2;
+            cell.y = i * cell_size+(WINDOW_WIDTH-size*cell_size)/2;
+
+            // Définir la couleur en fonction de la valeur de la cellule
+            switch (Cellule) {
+                case PLAYER_1:
+                    SDL_SetRenderDrawColor(renderer, 171, 30, 0, 255); // Rouge
+                    break;
+                case PLAYER_2:
+                    SDL_SetRenderDrawColor(renderer, 0, 30, 171, 255); // Bleu
+                    break;
+                case 3:
+                    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Rouge
+                    break;
+                case 4:
+                    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // Vert
+                    break;
+                case 5:
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Bleu
+                    break;
+                case 6:
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Jaune
+                    break;
+                case 7:
+                    SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255); // Magenta
+                    break;
+                case 8:
+                    SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255); // Cyan
+                    break;
+                case 9:
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // Blanc
+                    break;
+                default:
+                    SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255); // Gris
+                    break;
+            }
+
+            // Dessiner la cellule
+            SDL_RenderFillRect(renderer, &cell);
+
+            // Optionnel : dessiner une bordure pour chaque cellule
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Noir
+            SDL_RenderDrawRect(renderer, &cell);
+        }
+    }
+}
+
 
 int GR911_adjacent(GameState* state,int x , int y , int player){
     int size = state->size;
@@ -167,7 +232,7 @@ int GR911_updateWorld(GameState* state, char playedChar, int player) {
     int playedNum = GR911_letterToNum(playedChar);
     if (playedNum == ERROR) {
         // Invalid letter
-        printf("Couleurs invalid! Rejoue \n");
+        printf("Couleurs invalid! Rejoue:%d \n", playedChar);
         return 0;
     }
 
@@ -292,7 +357,7 @@ int GR911_glouton(GameState* state,int player){
 }
 
 
-int GR911_Human(GameState* state,int player){
+int GR911_Human2(GameState* state,int player){
     printf("Player %d's turnn. Choose [R/G/B/Y/M/C/W]: ", player);
 
     char playedChar;
@@ -300,9 +365,59 @@ int GR911_Human(GameState* state,int player){
 
         return playedChar;
 
-
-
 }
+int GR911_Human(SDL_Renderer *renderer, GameState *state, int player) {
+    printf("Player %d's turn. Click on a square to choose [R/G/B/Y/M/C/W]:\n", player);
+
+    SDL_Event event;
+    int running = 1;
+    int cell_size = 50; // Taille d'une cellule en pixels
+    char selectedChar ;
+
+    while (running) {
+        // Attendre un événement SDL
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = 0;
+            }
+
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                // Récupérer la position du clic
+                int mouseX = event.button.x-(WINDOW_WIDTH-state->size*cell_size)/2;
+                int mouseY = event.button.y-(WINDOW_WIDTH-state->size*cell_size)/2;
+
+                // Calculer les indices de la cellule cliquée
+                int col = mouseX / cell_size;
+                int row = mouseY / cell_size;
+
+                // Valider les indices (éviter de cliquer en dehors de la grille)
+                if (row >= 0 && row < state->size && col >= 0 && col < state->size) {
+                    // Obtenir la valeur de la cellule cliquée
+                    int Cellule = state->map[row * state->size + col];
+                    
+                    // Associer un caractère selon la cellule
+                    switch (Cellule) {
+                        case 3: selectedChar = 'R'; break;
+                        case 4: selectedChar = 'G'; break;
+                        case 5: selectedChar = 'B'; break;
+                        case 6: selectedChar = 'Y'; break;
+                        case 7: selectedChar = 'M'; break;
+                        case 8: selectedChar = 'C'; break;
+                        case 9: selectedChar = 'W'; break;
+                        default: selectedChar = '?'; break;
+                    }
+                    // Quitter la boucle après avoir sélectionné une cellule
+                    running = 0;
+                }
+            }
+        }
+
+
+    }
+
+    return selectedChar;
+}
+
 
 int GR911_Hegemone(GameState* state,int player){
     int coup = 3;
@@ -330,6 +445,74 @@ int GR911_Hegemone(GameState* state,int player){
         stateImaginaire.map = NULL;
         }    return coup;
 }
+
+
+
+/*void GR911_ecranVictoire(SDL_Renderer *renderer, int player) {
+    // Couleur de fond : noir
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    // Initialisation de SDL_ttf
+    if (TTF_Init() != 0) {
+        printf("Erreur TTF_Init: %s\n", TTF_GetError());
+        return;
+    }
+
+    // Charger une police
+    TTF_Font *font = TTF_OpenFont("arial.ttf", 48); // Remplacez "arial.ttf" par le chemin de votre police
+    if (!font) {
+        printf("Erreur TTF_OpenFont: %s\n", TTF_GetError());
+        TTF_Quit();
+        return;
+    }
+
+    // Préparer le texte
+    char message[50];
+    snprintf(message, sizeof(message), "Joueur %d a gagné !", player);
+
+    SDL_Color textColor = {255, 255, 255, 255}; // Blanc
+    SDL_Surface *textSurface = TTF_RenderText_Solid(font, message, textColor);
+    if (!textSurface) {
+        printf("Erreur TTF_RenderText_Solid: %s\n", TTF_GetError());
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+
+    // Créer une texture à partir de la surface
+    SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    if (!textTexture) {
+        printf("Erreur SDL_CreateTextureFromSurface: %s\n", SDL_GetError());
+        SDL_FreeSurface(textSurface);
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+
+    // Calculer la position du texte pour qu'il soit centré
+    int textWidth = textSurface->w;
+    int textHeight = textSurface->h;
+    SDL_FreeSurface(textSurface); // La surface n'est plus nécessaire
+
+    SDL_Rect textRect = {
+        .x = (800 - textWidth) / 2, // Centrer horizontalement (800 = largeur de la fenêtre)
+        .y = (600 - textHeight) / 2, // Centrer verticalement (600 = hauteur de la fenêtre)
+        .w = textWidth,
+        .h = textHeight
+    };
+
+    // Dessiner le texte
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_DestroyTexture(textTexture); // Libérer la texture
+
+    // Présenter le rendu
+    SDL_RenderPresent(renderer);
+
+    // Nettoyer
+    TTF_CloseFont(font);
+    TTF_Quit();
+}*/
 
 
 int GR911_Mixte(GameState* state,int player){
@@ -362,9 +545,131 @@ int GR911_Mixte(GameState* state,int player){
     }return coup;
 
 }
-
-
 int main(int argc, char** argv) {
+	srand(time(NULL));
+    int joueur1;
+    int joueur2;
+    printf("Selection du joueur 1:\n");
+    scanf("%d",joueur1);
+    printf("Selection du joueur 2:\n");
+    scanf("%d",joueur2);
+    GameState state;
+    // Taille du terrain
+
+    int size = 11;
+	// Initialisation
+
+    create_empty_game_state(&state, size);
+	 // Vérification si l'initialisation a réussi
+    if (state.map == NULL) {
+        printf("Erreur lors de l'initialisation du terrain.\n");
+        return 1; 
+    }
+
+    fill_map(&state);
+	GR911_affichage2(&state);
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        printf("Erreur SDL_Init: %s\n", SDL_GetError());
+        return 1;
+    }
+
+    SDL_Window *window = SDL_CreateWindow("GR911 Affichage",
+                                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          800, 800, SDL_WINDOW_SHOWN);
+    if (!window) {
+        printf("Erreur SDL_CreateWindow: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer) {
+        printf("Erreur SDL_CreateRenderer: %s\n", SDL_GetError());
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+
+    int running = 1;
+    SDL_Event event;
+    int jeuFini = 0;
+    int player = 1;
+    while (running) {
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = 0;
+            }
+        }
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Fond noir
+        SDL_RenderClear(renderer);
+
+        GR911_affichage(renderer, &state); // Appel de votre fonction pour dessiner la grille
+
+        SDL_RenderPresent(renderer);
+        while (jeuFini == 0) {
+            char playedChar;
+             if(player == 1){switch (joueur1)
+             {
+             case 0: playedChar=GR911_Human(renderer,&state,player); break;
+             case 1:  playedChar=GR911_NumToLetter(GR911_Mixte(&state,player)); break;
+             case 2:  playedChar=GR911_NumToLetter(GR911_glouton(&state,player)); break;
+             case 3:  playedChar=GR911_NumToLetter(GR911_Hegemone(&state,player)); break;
+             case 4:  playedChar=GR911_NumToLetter(GR911_coupAleatoireValable(&state,player)); break;
+             default: playedChar=GR911_Human(renderer,&state,player); break;
+                break;
+             }}
+             else{ switch (joueur1)
+                {
+                case 0:  playedChar=GR911_Human(renderer,&state,player); break;
+                case 1:  playedChar=GR911_NumToLetter(GR911_Mixte(&state,player)); break;
+                case 2:  playedChar=GR911_NumToLetter(GR911_glouton(&state,player)); break;
+                case 3:  playedChar=GR911_NumToLetter(GR911_Hegemone(&state,player)); break;
+                case 4:  playedChar=GR911_NumToLetter(GR911_coupAleatoireValable(&state,player)); break;
+                default: playedChar=GR911_Human(renderer,&state,player); break;
+                   break;
+                }}
+  
+            int valid = GR911_updateWorld(&state, playedChar, player);
+     
+            
+            GR911_affichage2(&state);
+       
+        GR911_affichage(renderer,&state);
+        SDL_RenderPresent(renderer);
+            if(valid==1){
+                jeuFini = GR911_finDuJeu(&state, player);
+                if (jeuFini == 1) {
+                    printf("Player %d wins!\n", player);
+                    //GR911_ecranVictoire(renderer, player)
+                } 
+                else {
+                    printf("%d\n",player);
+                    player = (player == 1) ? 2 : 1;
+                }	
+    
+            }
+            
+        }
+    }
+
+
+   
+
+    free(state.map);
+    state.map = NULL;
+
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;
+}
+
+
+/*int main(int argc, char** argv) {
     int windeglouton = 0;
     
         srand(time(NULL));
@@ -419,4 +724,4 @@ int main(int argc, char** argv) {
     printf("%d victoires\n",windeglouton);
 
     return 0;
-}
+}*/
