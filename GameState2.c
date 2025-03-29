@@ -1,4 +1,4 @@
-#include "head/GameState.h"
+#include "../head/GameState.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -61,8 +61,6 @@ void fill_map(GameState* map) {
     map->map[(size - 1) * size + 0] = PLAYER_2;
 }
 
-
-
 int GR911_letterToNum(char Cellule) {
     // couleurs en numéro pour simplifier le traitement
     switch (Cellule) {
@@ -92,6 +90,7 @@ char GR911_NumToLetter(int Cellule) {
 
 void GR911_affichage(GameState* state) {
     int size = state->size;
+    printf("-------------------\n");
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++){
             int Cellule = state->map[i * size + j];
@@ -149,6 +148,20 @@ int GR911_adjacent(GameState* state,int x , int y , int player){
 	// Aucune case adjacente n'appartient au joueur
     return 0;
 }
+int GR911_Couleur_adjacent(GameState* state, int player, int couleur){
+    int size=state->size;
+    for (int i = 0; i < size; i++){
+        for (int j = 0; j < size; j++){
+            if (state->map[i * size + j] == couleur) {
+                if (GR911_adjacent(state, i, j, player)) {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+
+}
 
 int GR911_updateWorld(GameState* state, char playedChar, int player) {
     int playedNum = GR911_letterToNum(playedChar);
@@ -187,7 +200,7 @@ int GR911_finDuJeu(GameState* state, int player) {
             }
         }
     }
-
+    
     if (sc > (size * size / 2)) {
         return 1;
     }
@@ -212,50 +225,68 @@ int GR911_coupAleatoireValable(GameState* state,int player){
                     {
                         puissanceDuCoup++;
                     }
-
+                    
                 }
             }
         }
 
         if (puissanceDuCoup>0){
-            printf("AI2 le dieu played %c \n", GR911_NumToLetter(coup));
             return coup;
         }
 
     }
-
+    
 }
-int GR911_glouton(GameState* state,int player){
-    int itteration = 0;
-    int coup = 3;
-    int coupActuel = 3;
+int GR911_frontiereActuel(GameState* state,int player){
+    int front = 0;
     int size = state->size;
-    int puissanceMax = 0;
-    while (itteration < 10)
-    {
-
-        int puissanceDuCoup = 0;
-        for (int i = 0; i < size; i++){
-            for (int j = 0; j < size; j++){
-                if (state->map[i * size + j] == coupActuel) {
-                    if (GR911_adjacent(state , i , j ,player) == 1)
-                    {
-                        puissanceDuCoup++;
-                    }
-
-                }
+    for (int i = 0; i < size; i++){
+        for (int j = 0; j < size; j++){
+            if(state->map[i * size + j] != player && GR911_adjacent(state , i,j, player)){
+                front ++;
             }
         }
+        }
+    return front;
+}
+int GR911_territoireActuel(GameState* state,int player){
+    int front = 0;
+    int size = state->size;
+    for (int i = 0; i < size; i++){
+        for (int j = 0; j < size; j++){
+            if(state->map[i * size + j] == player){
+                front ++;
+            }
+        }
+        }
+    return front;
+}
 
-       if(puissanceDuCoup>puissanceMax){
-            puissanceMax = puissanceDuCoup;
-            coup = coupActuel;
-       }
-       coupActuel++;
-       itteration++;
+int GR911_glouton(GameState* state,int player){
+    int coup = 3;
+    int territoire = 0;
+    int size = state->size;
+    for(int i = 3;i<10;i++){
+        GameState stateImaginaire;
+
+        create_empty_game_state(&stateImaginaire,size);
+        for (int i = 0; i < size; i++){
+            for (int j = 0; j < size; j++){
+                int couleur = state->map[i * size + j];
+                stateImaginaire.map[i * size + j] = couleur;
+        }
+        }
+        GR911_updateWorld(&stateImaginaire, GR911_NumToLetter(i), player);
+
+
+        if(territoire <= GR911_territoireActuel(&stateImaginaire , player)){
+            coup = i;
+            territoire=GR911_territoireActuel(&stateImaginaire , player);
+        }
+        free(stateImaginaire.map);
+        stateImaginaire.map = NULL;
     }
 
-    printf("Glouton le dieu played %c \n", GR911_NumToLetter(coup));
     return coup;
 
 }
@@ -272,48 +303,38 @@ int GR911_Human(GameState* state,int player){
 
 
 }
-int GR911_TerritoireActuel(GameState* state,int player){
-    int terr = 0
-    for (int i = 0; i < size; i++){
-        for (int j = 0; j < size; j++){
-            if(state->map[i * size + j] != player && GR911_adjacent(state , i,j, player)){
-                terr ++;
-            }
-        }
-        }
-    return terr;
-}
 
 int GR911_Hegemone(GameState* state,int player){
     int coup = 3;
-    int territoire = 0;
+    int frontiere = 0;
     int size = state->size;
     for(int i = 3;i<10;i++){
+        
         GameState stateImaginaire;
 
         create_empty_game_state(&stateImaginaire,size);
         for (int i = 0; i < size; i++){
             for (int j = 0; j < size; j++){
                 int couleur = state->map[i * size + j];
-                stateImaginaire->map[i * size + j] = couleur;
+                stateImaginaire.map[i * size + j] = couleur;
         }
         }
         GR911_updateWorld(&stateImaginaire, GR911_NumToLetter(i), player);
 
 
-        if(territoire <= GR911_TerritoireActuel(&stateImaginaire , player)){
+        if(frontiere < GR911_frontiereActuel(&stateImaginaire , player) && GR911_Couleur_adjacent(state,player,i)){
             coup = i;
+            frontiere=GR911_frontiereActuel(&stateImaginaire , player);
         }
         free(stateImaginaire.map);
         stateImaginaire.map = NULL;
-    }
-    return coup;
+        }    return coup;
 }
 
 
 int GR911_Mixte(GameState* state,int player){
     int coup = 3;
-    int territoire = 0;
+    int frontiere = 0;
     int size = state->size;
     for(int i = 3;i<10;i++){
         GameState stateImaginaire;
@@ -322,29 +343,30 @@ int GR911_Mixte(GameState* state,int player){
         for (int i = 0; i < size; i++){
             for (int j = 0; j < size; j++){
                 int couleur = state->map[i * size + j];
-                stateImaginaire->map[i * size + j] = couleur;
+                stateImaginaire.map[i * size + j] = couleur;
         }
         }
         GR911_updateWorld(&stateImaginaire, GR911_NumToLetter(i), player);
 
-        if(GR911_TerritoireActuel(&stateImaginaire , player) ==GR911_TerritoireActuel(state , player) ){
-            coup = GR911_glouton(state, player);
-        }
-        if(territoire <= GR911_TerritoireActuel(&stateImaginaire , player)){
+        
+        if(frontiere < GR911_frontiereActuel(&stateImaginaire , player)&& GR911_Couleur_adjacent(state,player,i)){
             coup = i;
+            frontiere=GR911_frontiereActuel(&stateImaginaire , player);
+        }
+        if(GR911_frontiereActuel(&stateImaginaire , player) ==GR911_frontiereActuel(state , player) ){
+            coup = GR911_glouton(state, player);
         }
 
         free(stateImaginaire.map);
         stateImaginaire.map = NULL;
-    }
+    }return coup;
 
 }
 
 
-
 int main(int argc, char** argv) {
     int windeglouton = 0;
-    for(int i=0;i<500;i++){
+    
         srand(time(NULL));
 
     GameState state;
@@ -357,7 +379,7 @@ int main(int argc, char** argv) {
 	 // Vérification si l'initialisation a réussi
     if (state.map == NULL) {
         printf("Erreur lors de l'initialisation du terrain.\n");
-        return 1;
+        return 1; 
     }
 
     fill_map(&state);
@@ -370,10 +392,10 @@ int main(int argc, char** argv) {
     while (jeuFini == 0) {
 
 
-        char playedChar = (player == 1)? GR911_NumToLetter(GR911_coupAleatoireValable(&state , player)) :GR911_NumToLetter(GR911_glouton(&state, player));
+        char playedChar = (player == 1)? GR911_NumToLetter(GR911_Hegemone(&state,player)) :GR911_NumToLetter(GR911_Mixte(&state,player));
 
         int valid = GR911_updateWorld(&state, playedChar, player);
-        GR911_affichage(&state);
+        //GR911_affichage(&state);
 		if(valid==1){
 			jeuFini = GR911_finDuJeu(&state, player);
         	if (jeuFini == 1) {
@@ -381,19 +403,20 @@ int main(int argc, char** argv) {
                 if(player == 2){
                     windeglouton++;
                 }
-        	}
+        	} 
         	else {
+                printf("%d\n",player);
             	player = (player == 1) ? 2 : 1;
-        	}
+        	}	
 
 		}
-
+        
     }
 
     free(state.map);
     state.map = NULL;
-    }
-    printf("%d",windeglouton);
+
+    printf("%d victoires\n",windeglouton);
 
     return 0;
 }
