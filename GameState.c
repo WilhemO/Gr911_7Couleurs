@@ -213,57 +213,7 @@ int GR911_adjacent(GameState* state,int x , int y , int player){
 	// Aucune case adjacente n'appartient au joueur
     return 0;
 }
-static void GR911_copyGameState(const GameState *src, GameState *dst)
-{
-    create_empty_game_state(dst, src->size);          // alloue et init
-    int size = src->size;
-    for (int i = 0; i < size * size; ++i)
-        dst->map[i] = src->map[i];
-}
 
-static int GR911_eval(const GameState *state, int player)
-{
-    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
-    return GR911_territoireActuel((GameState *)state, player)
-         - GR911_territoireActuel((GameState *)state, adv);
-}
-
-int GR911_defensif(GameState *state, int player)
-{
-    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
-    int bestColor      = 3;               /* valeur par défaut*/
-    int minAdvMaxGain  = INT_MAX;
-
-    for (int c = 3; c <= 9; ++c) {
-        if (!GR911_Couleur_adjacent(state, player, c)) continue;   
-
-        GameState s1;
-        GR911_copyGameState(state, &s1);
-        GR911_updateWorld(&s1, GR911_NumToLetter(c), player);
-        int advInit = GR911_territoireActuel(&s1, adv);
-
-        /* --- Cherche le meilleur (pire) coup de l’adversaire ------------- */
-        int advMaxGain = 0;
-        for (int d = 3; d <= 9; ++d) {
-            if (!GR911_Couleur_adjacent(&s1, adv, d)) continue;
-
-            GameState s2;
-            GR911_copyGameState(&s1, &s2);
-            GR911_updateWorld(&s2, GR911_NumToLetter(d), adv);
-            int gain = GR911_territoireActuel(&s2, adv) - advInit;
-            if (gain > advMaxGain) advMaxGain = gain;
-            free(s2.map);
-        }
-
-        /* --- Choisit le coup qui MINIMISE advMaxGain --------------------- */
-        if (advMaxGain < minAdvMaxGain) {
-            minAdvMaxGain = advMaxGain;
-            bestColor     = c;
-        }
-        free(s1.map);
-    }
-    return bestColor;
-}
 
 int GR911_Couleur_adjacent(GameState* state, int player, int couleur){
     int size=state->size;
@@ -596,6 +546,57 @@ int GR911_Mixte(GameState* state,int player){
         stateImaginaire.map = NULL;
     }return coup;
 
+}
+void GR911_copyGameState(const GameState *src, GameState *dst)
+{
+    create_empty_game_state(dst, src->size);          // alloue et init
+    int size = src->size;
+    for (int i = 0; i < size * size; ++i)
+        dst->map[i] = src->map[i];
+}
+
+int GR911_eval(const GameState *state, int player)
+{
+    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
+    return GR911_territoireActuel((GameState *)state, player)
+         - GR911_territoireActuel((GameState *)state, adv);
+}
+
+int GR911_defensif(GameState *state, int player)
+{
+    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
+    int bestColor      = 3;               /* valeur par défaut*/
+    int minAdvMaxGain  = INT_MAX;
+
+    for (int c = 3; c <= 9; ++c) {
+        if (!GR911_Couleur_adjacent(state, player, c)) continue;   
+
+        GameState s1;
+        GR911_copyGameState(state, &s1);
+        GR911_updateWorld(&s1, GR911_NumToLetter(c), player);
+        int advInit = GR911_territoireActuel(&s1, adv);
+
+        /* --- Cherche le meilleur (pire) coup de l’adversaire ------------- */
+        int advMaxGain = 0;
+        for (int d = 3; d <= 9; ++d) {
+            if (!GR911_Couleur_adjacent(&s1, adv, d)) continue;
+
+            GameState s2;
+            GR911_copyGameState(&s1, &s2);
+            GR911_updateWorld(&s2, GR911_NumToLetter(d), adv);
+            int gain = GR911_territoireActuel(&s2, adv) - advInit;
+            if (gain > advMaxGain) advMaxGain = gain;
+            free(s2.map);
+        }
+
+        /* --- Choisit le coup qui MINIMISE advMaxGain --------------------- */
+        if (advMaxGain < minAdvMaxGain) {
+            minAdvMaxGain = advMaxGain;
+            bestColor     = c;
+        }
+        free(s1.map);
+    }
+    return bestColor;
 }
 int main(int argc, char** argv) {
 	srand(time(NULL));
