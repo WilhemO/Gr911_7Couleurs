@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <SDL2/SDL.h>
-//#include <SDL2/SDL2_ttf.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -213,8 +214,6 @@ int GR911_adjacent(GameState* state,int x , int y , int player){
 	// Aucune case adjacente n'appartient au joueur
     return 0;
 }
-
-
 int GR911_Couleur_adjacent(GameState* state, int player, int couleur){
     int size=state->size;
     for (int i = 0; i < size; i++){
@@ -449,12 +448,220 @@ int GR911_Hegemone(GameState* state,int player){
 }
 
 
+void GR911_copyGameState(const GameState *src, GameState *dst)
+{
+    create_empty_game_state(dst, src->size);          // alloue et init
+    int size = src->size;
+    for (int i = 0; i < size * size; ++i)
+        dst->map[i] = src->map[i];
+}
 
-/*void GR911_ecranVictoire(SDL_Renderer *renderer, int player) {
+int GR911_eval(const GameState *state, int player)
+{
+    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
+    return GR911_territoireActuel((GameState *)state, player)
+         - GR911_territoireActuel((GameState *)state, adv);
+}
+
+int GR911_defensif(GameState *state, int player)
+{
+    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
+    int bestColor      = 3;               /* valeur par défaut*/
+    int minAdvMaxGain  = 10000;
+
+    for (int c = 3; c <= 9; ++c) {
+        if (!GR911_Couleur_adjacent(state, player, c)) continue;   
+
+        GameState s1;
+        GR911_copyGameState(state, &s1);
+        GR911_updateWorld(&s1, GR911_NumToLetter(c), player);
+        int advInit = GR911_territoireActuel(&s1, adv);
+
+        /* --- Cherche le meilleur (pire) coup de l’adversaire ------------- */
+        int advMaxGain = 0;
+        for (int d = 3; d <= 9; ++d) {
+            if (!GR911_Couleur_adjacent(&s1, adv, d)) continue;
+
+            GameState s2;
+            GR911_copyGameState(&s1, &s2);
+            GR911_updateWorld(&s2, GR911_NumToLetter(d), adv);
+            int gain = GR911_territoireActuel(&s2, adv) - advInit;
+            if (gain > advMaxGain) advMaxGain = gain;
+            free(s2.map);
+        }
+
+        /* --- Choisit le coup qui MINIMISE advMaxGain --------------------- */
+        if (advMaxGain < minAdvMaxGain) {
+            minAdvMaxGain = advMaxGain;
+            bestColor     = c;
+        }
+        free(s1.map);
+    }
+    return bestColor;
+}
+
+// Structure pour un bouton
+typedef struct {
+    SDL_Rect rect;
+    SDL_Color color;
+    const char* text;
+} Button;
+
+void render_text(SDL_Renderer* renderer, TTF_Font* font, const char* text, int x, int y, SDL_Color color) {
+    SDL_Surface* surface = TTF_RenderText_Solid(font, text, color);
+    if (!surface) {
+        printf("Erreur TTF_RenderText_Solid: %s\n", TTF_GetError());
+        return;
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    if (!texture) {
+        printf("Erreur SDL_CreateTextureFromSurface: %s\n", SDL_GetError());
+        return;
+    }
+
+    SDL_Rect dest = {x, y, surface->w, surface->h};
+    SDL_RenderCopy(renderer, texture, NULL, &dest);
+    SDL_DestroyTexture(texture);
+}
+// Fonction pour dessiner un bouton
+void render_button(SDL_Renderer* renderer, TTF_Font* font, Button button) {
+    // Dessiner le rectangle
+    SDL_SetRenderDrawColor(renderer, button.color.r, button.color.g, button.color.b, 255);
+    SDL_RenderFillRect(renderer, &button.rect);
+
+    // Dessiner le texte
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Surface* surface = TTF_RenderText_Solid(font, button.text, white);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+    int text_width = surface->w;
+    int text_height = surface->h;
+    SDL_Rect text_rect = {
+        button.rect.x + (button.rect.w - text_width) / 2,
+        button.rect.y + (button.rect.h - text_height) / 2,
+        text_width,
+        text_height
+    };
+    SDL_RenderCopy(renderer, texture, NULL, &text_rect);
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
+
+// Fonction de la page de lancement
+void GR911_page_de_lancement(SDL_Renderer* renderer, int* joueur1, int* joueur2) {
+    // Initialisation de SDL_ttf
+    if (TTF_Init() != 0) {
+        printf("Erreur TTF_Init: %s\n", TTF_GetError());
+        exit(1);
+    }
+
+    TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 30); // Chemin vers la police (à ajuster)
+    if (!font) {
+        printf("Erreur TTF_OpenFont: %s\n", TTF_GetError());
+        exit(1);
+    }
+    SDL_Surface *imageSurface = IMG_Load("fonts/hq720.jpg"); // Remplacez par le chemin correct
+    if (!imageSurface) {
+        printf("Erreur IMG_Load: %s\n", IMG_GetError());
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+    SDL_Texture *imageTexture = SDL_CreateTextureFromSurface(renderer, imageSurface);
+    if (!imageTexture) {
+        printf("Erreur SDL_CreateTextureFromSurface: %s\n", SDL_GetError());
+        SDL_FreeSurface(imageSurface);
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+    SDL_FreeSurface(imageSurface); // La surface n'est plus nécessaire
+
+    SDL_Rect imageRect = {
+        .x = 250,
+        .y = 325,
+        .w = 300, // Ajustez à la taille de la fenêtre
+        .h = 150  // Ajustez à la taille de la fenêtre
+    };
+    if (SDL_RenderCopy(renderer, imageTexture, NULL, &imageRect) < 0) {
+        printf("Erreur SDL_RenderCopy pour l'image : %s\n", SDL_GetError());
+        SDL_DestroyTexture(imageTexture);
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+    SDL_DestroyTexture(imageTexture); // Libérer la texture de l'image
+
+    Button buttons[6] = {
+        {{100, 200, 190, 50}, {0, 128, 255, 255}, "Humain"},
+        {{300, 200, 190, 50}, {0, 128, 255, 255}, "Mixte"},
+        {{500, 200, 190, 50}, {0, 128, 255, 255}, "Glouton"},
+        {{100, 300, 190, 50}, {0, 128, 255, 255}, "Hegemone"},
+        {{300, 300, 190, 50}, {0, 128, 255, 255}, "Aleatoire"},
+        {{500, 300, 190, 50}, {0, 128, 255, 255}, "Defensif"}
+    };
+
+    SDL_Color white = {255, 255, 255, 255};
+    int running = 1;
+    int selection_joueur = 1;
+
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = 0;
+            } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                int x = event.button.x;
+                int y = event.button.y;
+
+                for (int i = 0; i < 6; i++) {
+                    if (x >= buttons[i].rect.x && x <= (buttons[i].rect.x + buttons[i].rect.w) &&
+                        y >= buttons[i].rect.y && y <= (buttons[i].rect.y + buttons[i].rect.h)) {
+                        if (selection_joueur == 1) {
+                            *joueur1 = i;
+                            selection_joueur = 2; // Passer au joueur 2
+                        } else {
+                            *joueur2 = i;
+                            running = 0; // Quitter après sélection des deux joueurs
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Dessin de l'écran
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+        //font = TTF_OpenFont("fonts/arial.ttf", 48);
+        // Afficher les messages
+        render_text(renderer, font, "Bienvenue dans le jeu!", 250, 50, white);
+        if (selection_joueur == 1) {
+            render_text(renderer, font, "Joueur 1, choisissez votre type :", 200, 100, white);
+        } else {
+            render_text(renderer, font, "Joueur 2, choisissez votre type :", 200, 100, white);
+        }
+
+        // Afficher les boutons
+        for (int i = 0; i < 6; i++) {
+            render_button(renderer, font, buttons[i]);
+        }
+
+        SDL_RenderPresent(renderer);
+    }
+
+    TTF_CloseFont(font);
+    TTF_Quit();
+}
+
+void GR911_ecranVictoire(SDL_Renderer *renderer, int player) {
     // Couleur de fond : noir
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
-
+  
     // Initialisation de SDL_ttf
     if (TTF_Init() != 0) {
         printf("Erreur TTF_Init: %s\n", TTF_GetError());
@@ -462,17 +669,50 @@ int GR911_Hegemone(GameState* state,int player){
     }
 
     // Charger une police
-    TTF_Font *font = TTF_OpenFont("arial.ttf", 48); // Remplacez "arial.ttf" par le chemin de votre police
+    TTF_Font *font = TTF_OpenFont("fonts/arial.ttf", 48); // Remplacez par le chemin correct
     if (!font) {
         printf("Erreur TTF_OpenFont: %s\n", TTF_GetError());
         TTF_Quit();
         return;
     }
 
+    // Charger l'image
+    SDL_Surface *imageSurface = IMG_Load("fonts/top1.jpg"); // Remplacez par le chemin correct
+    if (!imageSurface) {
+        printf("Erreur IMG_Load: %s\n", IMG_GetError());
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+
+    SDL_Texture *imageTexture = SDL_CreateTextureFromSurface(renderer, imageSurface);
+    if (!imageTexture) {
+        printf("Erreur SDL_CreateTextureFromSurface: %s\n", SDL_GetError());
+        SDL_FreeSurface(imageSurface);
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+    SDL_FreeSurface(imageSurface); // La surface n'est plus nécessaire
+
+    SDL_Rect imageRect = {
+        .x = 250,
+        .y = 325,
+        .w = 300, // Ajustez à la taille de la fenêtre
+        .h = 150  // Ajustez à la taille de la fenêtre
+    };
+    if (SDL_RenderCopy(renderer, imageTexture, NULL, &imageRect) < 0) {
+        printf("Erreur SDL_RenderCopy pour l'image : %s\n", SDL_GetError());
+        SDL_DestroyTexture(imageTexture);
+        TTF_CloseFont(font);
+        TTF_Quit();
+        return;
+    }
+    SDL_DestroyTexture(imageTexture); // Libérer la texture de l'image
+
     // Préparer le texte
     char message[50];
-    snprintf(message, sizeof(message), "Joueur %d a gagné !", player);
-
+    snprintf(message, sizeof(message), u8"Victoire du joueur %d  !", player);
     SDL_Color textColor = {255, 255, 255, 255}; // Blanc
     SDL_Surface *textSurface = TTF_RenderText_Solid(font, message, textColor);
     if (!textSurface) {
@@ -505,7 +745,10 @@ int GR911_Hegemone(GameState* state,int player){
     };
 
     // Dessiner le texte
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    if (SDL_RenderCopy(renderer, textTexture, NULL, &textRect) < 0) {
+        printf("Erreur SDL_RenderCopy pour le texte : %s\n", SDL_GetError());
+    }
+
     SDL_DestroyTexture(textTexture); // Libérer la texture
 
     // Présenter le rendu
@@ -514,7 +757,8 @@ int GR911_Hegemone(GameState* state,int player){
     // Nettoyer
     TTF_CloseFont(font);
     TTF_Quit();
-}*/
+}
+
 
 
 int GR911_Mixte(GameState* state,int player){
@@ -547,65 +791,24 @@ int GR911_Mixte(GameState* state,int player){
     }return coup;
 
 }
-void GR911_copyGameState(const GameState *src, GameState *dst)
-{
-    create_empty_game_state(dst, src->size);          // alloue et init
-    int size = src->size;
-    for (int i = 0; i < size * size; ++i)
-        dst->map[i] = src->map[i];
-}
 
-int GR911_eval(const GameState *state, int player)
-{
-    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
-    return GR911_territoireActuel((GameState *)state, player)
-         - GR911_territoireActuel((GameState *)state, adv);
-}
 
-int GR911_defensif(GameState *state, int player)
-{
-    int adv = (player == PLAYER_1) ? PLAYER_2 : PLAYER_1;
-    int bestColor      = 3;               /* valeur par défaut*/
-    int minAdvMaxGain  = INT_MAX;
-
-    for (int c = 3; c <= 9; ++c) {
-        if (!GR911_Couleur_adjacent(state, player, c)) continue;   
-
-        GameState s1;
-        GR911_copyGameState(state, &s1);
-        GR911_updateWorld(&s1, GR911_NumToLetter(c), player);
-        int advInit = GR911_territoireActuel(&s1, adv);
-
-        /* --- Cherche le meilleur (pire) coup de l’adversaire ------------- */
-        int advMaxGain = 0;
-        for (int d = 3; d <= 9; ++d) {
-            if (!GR911_Couleur_adjacent(&s1, adv, d)) continue;
-
-            GameState s2;
-            GR911_copyGameState(&s1, &s2);
-            GR911_updateWorld(&s2, GR911_NumToLetter(d), adv);
-            int gain = GR911_territoireActuel(&s2, adv) - advInit;
-            if (gain > advMaxGain) advMaxGain = gain;
-            free(s2.map);
-        }
-
-        /* --- Choisit le coup qui MINIMISE advMaxGain --------------------- */
-        if (advMaxGain < minAdvMaxGain) {
-            minAdvMaxGain = advMaxGain;
-            bestColor     = c;
-        }
-        free(s1.map);
-    }
-    return bestColor;
-}
 int main(int argc, char** argv) {
 	srand(time(NULL));
-    int joueur1;
-    int joueur2;
-    printf("Selection du joueur 1:\n");
-    scanf("%d",joueur1);
-    printf("Selection du joueur 2:\n");
-    scanf("%d",joueur2);
+    int joueur1, joueur2;
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        printf("Erreur SDL_Init: %s\n", SDL_GetError());
+        return 1;
+    }
+
+    SDL_Window *window = SDL_CreateWindow("Jeu du groupe 911", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 800, SDL_WINDOW_SHOWN);
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    
+    GR911_page_de_lancement(renderer, &joueur1, &joueur2);
+
+    printf("Joueur 1: %d\n", joueur1);
+    printf("Joueur 2: %d\n", joueur2);
+
     GameState state;
     // Taille du terrain
 
@@ -626,23 +829,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SDL_Window *window = SDL_CreateWindow("GR911 Affichage",
-                                          SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          800, 800, SDL_WINDOW_SHOWN);
-    if (!window) {
-        printf("Erreur SDL_CreateWindow: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer) {
-        printf("Erreur SDL_CreateRenderer: %s\n", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
 
     int running = 1;
     SDL_Event event;
@@ -656,9 +842,6 @@ int main(int argc, char** argv) {
         }
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // Fond noir
-        SDL_RenderClear(renderer);
-
-        GR911_affichage(renderer, &state); // Appel de votre fonction pour dessiner la grille
 
         SDL_RenderPresent(renderer);
         while (jeuFini == 0) {
@@ -670,10 +853,11 @@ int main(int argc, char** argv) {
              case 2:  playedChar=GR911_NumToLetter(GR911_glouton(&state,player)); break;
              case 3:  playedChar=GR911_NumToLetter(GR911_Hegemone(&state,player)); break;
              case 4:  playedChar=GR911_NumToLetter(GR911_coupAleatoireValable(&state,player)); break;
+             case 5:  playedChar=GR911_NumToLetter(GR911_defensif(&state,player)); break;
              default: playedChar=GR911_Human(renderer,&state,player); break;
                 break;
              }}
-             else{ switch (joueur1)
+             else{ switch (joueur2)
                 {
                 case 0:  playedChar=GR911_Human(renderer,&state,player); break;
                 case 1:  playedChar=GR911_NumToLetter(GR911_Mixte(&state,player)); break;
@@ -683,28 +867,35 @@ int main(int argc, char** argv) {
                 default: playedChar=GR911_Human(renderer,&state,player); break;
                    break;
                 }}
-  
+            
+        printf("Joueur sélectionné:%d",joueur1);
+        
+        printf("Joueur sélectionné:%d",joueur2);
             int valid = GR911_updateWorld(&state, playedChar, player);
      
             
             GR911_affichage2(&state);
-       
-        GR911_affichage(renderer,&state);
-        SDL_RenderPresent(renderer);
+
+
             if(valid==1){
                 jeuFini = GR911_finDuJeu(&state, player);
                 if (jeuFini == 1) {
                     printf("Player %d wins!\n", player);
-                    //GR911_ecranVictoire(renderer, player)
+                    GR911_ecranVictoire(renderer, player);
+                    SDL_RenderPresent(renderer);
                 } 
                 else {
                     printf("%d\n",player);
                     player = (player == 1) ? 2 : 1;
+                    GR911_affichage(renderer,&state);
+                    SDL_RenderPresent(renderer);
                 }	
     
             }
             
         }
+        
+    GR911_ecranVictoire(renderer, player);
     }
 
 
@@ -713,68 +904,9 @@ int main(int argc, char** argv) {
     free(state.map);
     state.map = NULL;
 
-
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
     return 0;
 }
-
-
-/*int main(int argc, char** argv) {
-    int windeglouton = 0;
-    
-        srand(time(NULL));
-
-    GameState state;
-    // Taille du terrain
-
-    int size = 11;
-	// Initialisation
-
-    create_empty_game_state(&state, size);
-	 // Vérification si l'initialisation a réussi
-    if (state.map == NULL) {
-        printf("Erreur lors de l'initialisation du terrain.\n");
-        return 1; 
-    }
-
-    fill_map(&state);
-    GR911_affichage(&state);
-
-    // Boucle principlae du jeu -----
-    int jeuFini = 0;
-    int player = 1;
-
-    while (jeuFini == 0) {
-
-
-        char playedChar = (player == 1)? GR911_NumToLetter(GR911_Hegemone(&state,player)) :GR911_NumToLetter(GR911_Mixte(&state,player));
-
-        int valid = GR911_updateWorld(&state, playedChar, player);
-        //GR911_affichage(&state);
-		if(valid==1){
-			jeuFini = GR911_finDuJeu(&state, player);
-        	if (jeuFini == 1) {
-            	printf("Player %d wins!\n", player);
-                if(player == 2){
-                    windeglouton++;
-                }
-        	} 
-        	else {
-                printf("%d\n",player);
-            	player = (player == 1) ? 2 : 1;
-        	}	
-
-		}
-        
-    }
-
-    free(state.map);
-    state.map = NULL;
-
-    printf("%d victoires\n",windeglouton);
-
-    return 0;
-}*/

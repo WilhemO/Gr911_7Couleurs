@@ -4,4 +4,5 @@ FLAGS=-Wall -Werror -lm -g
 	gcc $(FLAGS) o/GameState.o -o 7color
 
 o/GameState.o: head/GameState.h src/GameState.c
-	gcc $(FLAGS) -c src/GameState.c -o o/GameState.o
+	gcc -o votre_programme GameState.c -lSDL2 -lSDL2_image -lSDL2_ttf
+o
